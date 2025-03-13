@@ -22,10 +22,10 @@ namespace DungeonExplorer
 
         private void InitializeRooms()
         {
-            // Create rooms
-            Room dungeon = new Room("A dark, eerie dungeon.", new List<string> { "Torch", "Sword", "Potion" });
-            Room corridor = new Room("A narrow, damp corridor. It feels cold.");
-            Room treasureRoom = new Room("A bright chamber filled with treasure! But there's a trap.");
+            // Create rooms with names added
+            Room dungeon = new Room("Dungeon", "A dark, eerie dungeon.", new List<string> { "Torch", "Sword", "Potion" });
+            Room corridor = new Room("Corridor", "A narrow, damp corridor. It feels cold.");
+            Room treasureRoom = new Room("Treasure Room", "A bright chamber filled with treasure! But there's a trap.");
 
             // Set up room connections
             dungeon.AddExit("north", corridor);
