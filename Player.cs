@@ -1,106 +1,75 @@
-﻿using System.Collections.Generic;
 using System;
-
+using System.Collections.Generic;
 
 namespace DungeonExplorer
 {
-    public class Player
+    public class Player : Creature
     {
-        public string Name { get; private set; }
-        public int Health { get; private set; }
         public int MaxHealth { get; private set; }
-        private List<string> inventory = new List<string>();
+        public Inventory Inventory { get; private set; }
 
-        public Player(string name, int maxHealth)
+        public Player(string name, int maxHealth) : base(name, maxHealth)
         {
-            Name = name;
             MaxHealth = maxHealth;
-            Health = maxHealth; // Start at full health
-        }
-
-        // Checks if player is still alive
-        public bool IsAlive()
-        {
-            return Health > 0;
-        }
-
-        // Adjusts player's health
-        public void TakeDamage(int damage)
-        {
-            if (damage < 0) return; // Prevent negative damage
-            Health = Math.Max(Health - damage, 0);
-            Console.WriteLine($"{Name} took {damage} damage. Remaining health: {Health}");
-
-            if (Health == 0)
-            {
-                Console.WriteLine($"{Name} has died.");
-            }
-        }
-
-        // Method to retrieve inventory contents
-        public string GetInventory()
-        {
-            return inventory.Count > 0 ? $"Your inventory: {string.Join(", ", inventory)}" : "Inventory is empty.";
+            Inventory = new Inventory();
         }
 
         // Heals the player, ensuring health doesn't exceed max health
         public void Heal(int amount)
         {
-            if (amount < 0) return; // Prevent negative healing
+            if (amount < 0) return;
             Health = Math.Min(Health + amount, MaxHealth);
             Console.WriteLine($"{Name} healed {amount} points. Current health: {Health}");
         }
 
         // Adds an item to inventory
-        public void PickUpItem(string item)
+        public void PickUpItem(Item item)
         {
-            if (!string.IsNullOrEmpty(item))
+            if (item != null)
             {
-                inventory.Add(item);
+                Inventory.AddItem(item);
+                Console.WriteLine($"{Name} picked up {item.Name}.");
             }
         }
 
-        // Removes an item from inventory
-        public bool DropItem(string item)
+        // Drops an item by name
+        public bool DropItem(string itemName)
         {
-            if (inventory.Remove(item))
+            var item = Inventory.FindItemByName(itemName);
+            if (item != null)
             {
-                Console.WriteLine($"{Name} dropped {item}.");
+                Inventory.RemoveItem(item);
+                Console.WriteLine($"{Name} dropped {item.Name}.");
                 return true;
             }
-            Console.WriteLine($"{Name} does not have {item} in inventory.");
+
+            Console.WriteLine($"{Name} does not have {itemName} in inventory.");
             return false;
         }
 
-        // Returns inventory as a formatted string
-        public string InventoryContents()
+        // Uses an item by name
+        public void UseItem(string itemName)
         {
-            return inventory.Count > 0 ? $"Inventory: {string.Join(", ", inventory)}" : "Inventory is empty.";
-        }
-
-        // Uses an item if applicable
-        public void UseItem(string item)
-        {
-            if (!inventory.Contains(item))
+            var item = Inventory.FindItemByName(itemName);
+            if (item == null)
             {
-                Console.WriteLine($"{Name} does not have {item} in inventory.");
+                Console.WriteLine($"{Name} does not have {itemName} in inventory.");
                 return;
             }
 
-            switch (item.ToLower())
+            item.Use(this);
+            if (item.IsConsumable)
             {
-                case "potion":
-                    Heal(20);
-                    inventory.Remove(item);
-                    Console.WriteLine($"{Name} used a potion and restored 20 health.");
-                    break;
-                case "key":
-                    Console.WriteLine($"{Name} used a key. It might open a locked door!");
-                    break;
-                default:
-                    Console.WriteLine($"{Name} can't use {item}.");
-                    break;
+                Inventory.RemoveItem(item);
+                Console.WriteLine($"{Name} used {item.Name}.");
             }
+        }
+
+        // Returns a string representation of inventory contents
+        public string InventoryContents()
+        {
+            var items = Inventory.GetAllItems();
+            return items.Count > 0 ? $"Inventory: {string.Join(", ", items.ConvertAll(i => i.Name))}" : "Inventory is empty.";
         }
 
         // Displays player status

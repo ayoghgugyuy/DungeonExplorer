@@ -1,85 +1,94 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace DungeonExplorer
 {
-    internal class Room
+    public class Room
     {
-        private string name; // Name of the room (new feature added for better clarity)
-        private string description; // Description of what the room looks like or feels like
-        private List<string> items; // Items available in this room
-        private Dictionary<string, Room> exits; // Directions and connected rooms (e.g., "north" => Room)
+        private string name;
+        private string description;
+        private List<Item> items; // Updated to use Item objects
+        private List<Monster> monsters; // New: Monsters in the room
+        private Dictionary<string, Room> exits;
 
-        public bool HasTrap { get; private set; } // Flag to indicate if the room has a trap
-        public int TrapDamage { get; private set; } // Amount of damage dealt by the trap
+        public bool HasTrap { get; private set; }
+        public int TrapDamage { get; private set; }
 
-        // Constructor - initializes room with name, description, optional items
-        public Room(string name, string description, List<string> items = null)
+        public Room(string name, string description, List<Item> items = null)
         {
             this.name = name;
             this.description = description;
-            this.items = items ?? new List<string>();
+            this.items = items ?? new List<Item>();
+            this.monsters = new List<Monster>();
             this.exits = new Dictionary<string, Room>();
             HasTrap = false;
             TrapDamage = 0;
         }
 
-        // Getter for the room's name (if needed from outside)
-        public string GetName()
-        {
-            return name;
-        }
+        public string GetName() => name;
 
-        // Returns a full description of the room, including name, items, and exits
         public string GetDescription()
         {
-            string itemText = items.Count > 0 ? $" You see: {string.Join(", ", items)}." : " There are no items here.";
+            string itemText = items.Count > 0 ? $" You see: {string.Join(", ", items.Select(i => i.Name))}." : " There are no items here.";
+            string monsterText = monsters.Count > 0 ? $" Monsters present: {string.Join(", ", monsters.Select(m => m.Name))}." : "";
             string exitText = exits.Count > 0 ? $" Exits: {string.Join(", ", exits.Keys)}." : " No exits available.";
-            return $"You are in: {name}\n{description}{itemText}{exitText}";
+            return $"You are in: {name}\n{description}{itemText}{monsterText}{exitText}";
         }
 
-        // Add an exit in a specific direction to another room
         public void AddExit(string direction, Room room)
         {
             if (!exits.ContainsKey(direction))
-            {
                 exits[direction] = room;
-            }
         }
 
-        // Check if an exit exists in the given direction
-        public bool HasExit(string direction)
-        {
-            return exits.ContainsKey(direction);
-        }
+        public bool HasExit(string direction) => exits.ContainsKey(direction);
 
-        // Get the room connected in the specified direction
-        public Room GetExit(string direction)
-        {
-            return exits.TryGetValue(direction, out Room room) ? room : null;
-        }
+        public Room GetExit(string direction) => exits.TryGetValue(direction, out Room room) ? room : null;
 
-        // Allow player to take an item from the room (case-insensitive)
-        public bool TakeItem(string item, Player player)
+        public bool TakeItem(string itemName, Player player)
         {
-            string foundItem = items.Find(i => i.Equals(item, StringComparison.OrdinalIgnoreCase));
-            if (!string.IsNullOrEmpty(foundItem))
+            var item = items.FirstOrDefault(i => i.Name.Equals(itemName, StringComparison.OrdinalIgnoreCase));
+            if (item != null)
             {
-                items.Remove(foundItem); // Remove from room
-                player.PickUpItem(foundItem); // Add to player inventory
+                items.Remove(item);
+                player.PickUpItem(item);
                 return true;
             }
             return false;
         }
 
-        // Set a trap in the room with specified damage value
+        public void AddItem(Item item)
+        {
+            if (item != null)
+                items.Add(item);
+        }
+
+        public void AddMonster(Monster monster)
+        {
+            if (monster != null)
+                monsters.Add(monster);
+        }
+
+        public void RemoveMonster(Monster monster)
+        {
+            if (monster != null)
+                monsters.Remove(monster);
+        }
+
+        public List<Monster> GetMonsters() => new List<Monster>(monsters);
+
+        public Monster GetStrongestMonster()
+        {
+            return monsters.OrderByDescending(m => m.Health).FirstOrDefault();
+        }
+
         public void SetTrap(int damage)
         {
             HasTrap = true;
             TrapDamage = damage;
         }
 
-        // Trigger the trap if it's active – warn the player and apply damage
         public void TriggerTrap(Player player)
         {
             if (HasTrap)
@@ -87,7 +96,7 @@ namespace DungeonExplorer
                 Console.WriteLine($"{player.Name} hears a faint clicking sound... A TRAP!");
                 Console.WriteLine($"{player.Name} triggered a trap and took {TrapDamage} damage!");
                 player.TakeDamage(TrapDamage);
-                HasTrap = false; // Deactivate trap after triggering (one-time use)
+                HasTrap = false;
             }
         }
     }
