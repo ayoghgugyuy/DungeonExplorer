@@ -1,5 +1,4 @@
-﻿using System;
-using System.Media;
+using System;
 using System.Collections.Generic;
 
 namespace DungeonExplorer
@@ -11,6 +10,7 @@ namespace DungeonExplorer
         private Dictionary<string, Room> rooms;
         private bool playing;
 
+        // Game constructor - prompts user for name and initializes rooms
         public Game()
         {
             Console.Write("Enter your character's name: ");
@@ -20,26 +20,32 @@ namespace DungeonExplorer
             playing = true;
         }
 
+        // Sets up all rooms, their connections, items, and traps
         private void InitializeRooms()
         {
-            // Create rooms with names added
-            Room dungeon = new Room("Dungeon", "A dark, eerie dungeon.", new List<string> { "Torch", "Sword", "Potion" });
+            // Create item objects
+            Item torch = new Key(); // Placeholder if you want to define a Torch class later
+            Item sword = new Sword();
+            Item potion = new HealingPotion();
+
+            // Create rooms with item objects
+            Room dungeon = new Room("Dungeon", "A dark, eerie dungeon.", new List<Item> { torch, sword, potion });
             Room corridor = new Room("Corridor", "A narrow, damp corridor. It feels cold.");
             Room treasureRoom = new Room("Treasure Room", "A bright chamber filled with treasure! But there's a trap.");
 
-            // Set up room connections
+            // Set a trap
+            treasureRoom.SetTrap(10);
+
+            // Add exits
             dungeon.AddExit("north", corridor);
             corridor.AddExit("south", dungeon);
             corridor.AddExit("north", treasureRoom);
             treasureRoom.AddExit("south", corridor);
 
-            // Set a trap in treasureRoom
-            treasureRoom.SetTrap(10);
-
             // Set the starting room
             currentRoom = dungeon;
 
-            // Store in dictionary for reference
+            // Store rooms in a dictionary
             rooms = new Dictionary<string, Room>
             {
                 { "dungeon", dungeon },
@@ -48,10 +54,12 @@ namespace DungeonExplorer
             };
         }
 
+        // Starts the main game loop
         public void Start()
         {
             Console.WriteLine($"\nWelcome, {player.Name}! You find yourself in a dungeon.");
 
+            // Main game loop
             while (playing && player.IsAlive())
             {
                 Console.WriteLine($"\n{currentRoom.GetDescription()}");
@@ -66,8 +74,15 @@ namespace DungeonExplorer
             }
         }
 
+        // Handles player input commands
         private void HandleInput(string input)
         {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                Console.WriteLine("Please enter a command.");
+                return;
+            }
+
             string[] parts = input.Split(new char[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
             string command = parts[0];
             string argument = parts.Length > 1 ? parts[1] : "";
@@ -79,10 +94,17 @@ namespace DungeonExplorer
                     break;
 
                 case "take":
-                    if (currentRoom.TakeItem(argument, player))
-                        Console.WriteLine($"You picked up the {argument}.");
+                    if (!string.IsNullOrWhiteSpace(argument))
+                    {
+                        if (currentRoom.TakeItem(argument, player))
+                            Console.WriteLine($"You picked up the {argument}.");
+                        else
+                            Console.WriteLine($"You can't take {argument}.");
+                    }
                     else
-                        Console.WriteLine($"You can't take {argument}.");
+                    {
+                        Console.WriteLine("Take what? Please specify an item.");
+                    }
                     break;
 
                 case "inventory":
@@ -90,28 +112,34 @@ namespace DungeonExplorer
                     break;
 
                 case "use":
-                    if (!string.IsNullOrEmpty(argument))
+                    if (!string.IsNullOrWhiteSpace(argument))
                         player.UseItem(argument);
                     else
-                        Console.WriteLine("Use what?");
+                        Console.WriteLine("Use what? Please specify an item.");
                     break;
 
                 case "go":
-                    if (currentRoom.HasExit(argument))
+                    if (!string.IsNullOrWhiteSpace(argument))
                     {
-                        currentRoom = currentRoom.GetExit(argument);
-                        Console.WriteLine($"You moved {argument}.");
-
-                        // Trigger trap if present
-                        currentRoom.TriggerTrap(player);
-                        if (!player.IsAlive())
+                        if (currentRoom.HasExit(argument))
                         {
-                            playing = false;
+                            currentRoom = currentRoom.GetExit(argument);
+                            Console.WriteLine($"You moved {argument}.");
+                            currentRoom.TriggerTrap(player);
+
+                            if (!player.IsAlive())
+                                playing = false;
+                        }
+                        else
+                        {
+                            Console.WriteLine("You can't go that way.");
+                            Console.WriteLine($"Available directions: {string.Join(", ", GetAvailableDirections())}");
                         }
                     }
                     else
                     {
-                        Console.WriteLine("You can't go that way.");
+                        Console.WriteLine("Go where? Please specify a direction.");
+                        Console.WriteLine($"Available directions: {string.Join(", ", GetAvailableDirections())}");
                     }
                     break;
 
@@ -122,8 +150,30 @@ namespace DungeonExplorer
 
                 default:
                     Console.WriteLine("Invalid command.");
+                    Console.WriteLine("Available commands: look, take <item>, go <direction>, inventory, use <item>, exit");
                     break;
             }
+        }
+
+        // Extracts directions available in the current room
+        private List<string> GetAvailableDirections()
+        {
+            List<string> directions = new List<string>();
+            if (currentRoom != null)
+            {
+                string description = currentRoom.GetDescription();
+                string[] lines = description.Split('\n');
+                foreach (string line in lines)
+                {
+                    if (line.StartsWith("You are in:")) continue;
+                    if (line.Contains("Exits:"))
+                    {
+                        string exitLine = line.Substring(line.IndexOf("Exits:") + 7);
+                        directions.AddRange(exitLine.Split(new[] { ',', '.' }, StringSplitOptions.RemoveEmptyEntries));
+                    }
+                }
+            }
+            return directions;
         }
     }
 }
